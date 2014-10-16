@@ -27,6 +27,8 @@ const jsonText = `
 ]
 `
 
+var emptySlice = make([]interface{}, 0, 0)
+
 func decodeValue(s *json.Scanner) (interface{}, error) {
 	switch s.Kind() {
 	case json.Number:
@@ -34,9 +36,9 @@ func decodeValue(s *json.Scanner) (interface{}, error) {
 	case json.String:
 		return string(s.Value()), nil
 	case json.Array:
-		v := []interface{}{}
-		n := s.NestingLevel()
-		for s.ScanAtLevel(n) {
+		v := emptySlice
+		as := s.ArrayScanner()
+		for as.Scan() {
 			subv, err := decodeValue(s)
 			if err != nil {
 				return v, err
@@ -46,18 +48,17 @@ func decodeValue(s *json.Scanner) (interface{}, error) {
 		return v, s.Err()
 	case json.Object:
 		v := make(map[string]interface{})
-		n := s.NestingLevel()
-		for s.ScanAtLevel(n) {
-			name := string(s.Name())
+		os := s.ObjectScanner()
+		for os.Scan() {
 			subv, err := decodeValue(s)
 			if err != nil {
 				return v, err
 			}
-			v[name] = subv
+			v[os.Name()] = subv
 		}
 		return v, s.Err()
 	case json.Bool:
-		return s.Value()[0] == 't', nil
+		return s.BoolValue(), nil
 	case json.Null:
 		return nil, nil
 	default:
